@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 require('dotenv').config()
 
 app.use(cors());
@@ -24,7 +25,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const classCollection = client.db('classDB').collection('classes')
     const userCollection = client.db('classDB').collection('users')
@@ -74,6 +75,7 @@ async function run() {
         const result = await classCollection.findOne(query)
         res.send(result)
     })
+    
     app.post('/classes',async(req,res)=>{
         const newClass = req.body;
         const result = await classCollection.insertOne(newClass)
@@ -96,6 +98,29 @@ async function run() {
         const result =await classCollection.updateOne(filter, updatedDoc)
         res.send(result)
     })
+
+    app.put('/approveClass/:id', async(req,res)=>{
+        const id = req.params.id
+        const filter = { _id : new ObjectId(id)}
+        const updatedDoc = {
+            $set : {
+                status : "accepted"
+            }
+        }
+        const result =await classCollection.updateOne(filter, updatedDoc)
+        res.send(result)
+    })
+    app.put('/rejectClass/:id', async(req,res)=>{
+        const id = req.params.id
+        const filter = { _id : new ObjectId(id)}
+        const updatedDoc = {
+            $set : {
+                status : "rejected"
+            }
+        }
+        const result =await classCollection.updateOne(filter, updatedDoc)
+        res.send(result)
+    })
     app.delete('/classes/:id', async(req,res)=>{
         const id = req.params.id
         const query = { _id : new ObjectId(id)}
@@ -112,8 +137,10 @@ async function run() {
         const result = await requestCollection.insertOne(newRequest)
         res.send(result)
     })
+   
+    
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
